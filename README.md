@@ -15,6 +15,11 @@ A robust file upload and media management system built with NestJS, TypeORM, and
 - **TypeORM integration** for database operations
 - **Docker integration** for development environment setup
 - **Static file serving** for easy access to uploaded media
+- **Comprehensive file validation** for security:
+  - File type (MIME) validation
+  - Rejection of executable files (.exe, .dll, .bat, .cmd, .sh, etc.)
+  - File size limits (max 10MB)
+- **Extensive test coverage** for both unit and E2E tests
 
 ## Project Structure
 
@@ -28,6 +33,9 @@ src/
 ├── storage/          # Storage service for file handling
 │   ├── disks/        # Disk storage configurations
 │   ├── services/     # Storage services
+test/
+├── app.e2e-spec.ts   # E2E tests for app endpoints
+├── media.e2e-spec.ts # E2E tests for media operations and file validation
 ```
 
 ## API Endpoints
@@ -117,6 +125,30 @@ Response will include URLs to the original file and different thumbnail sizes:
 }
 ```
 
+## File Validation
+
+The system implements the following security validations for file uploads:
+
+### File Type Validation
+- Whitelist of allowed MIME types:
+  - Images: JPEG, PNG, GIF, WebP, SVG
+  - Documents: PDF, Word, Excel, PowerPoint, TXT, CSV
+  - Audio: MP3, WAV, OGG
+  - Video: MP4, MPEG, WebM, QuickTime
+  - Archives: ZIP, RAR
+
+### Blacklisted File Extensions
+The system rejects potentially dangerous file types, including:
+- Executable files (.exe)
+- DLL files (.dll)
+- Batch scripts (.bat, .cmd)
+- Shell scripts (.sh)
+- System files (.sys, .com)
+- Installation files (.msi, .app, .dmg)
+
+### Size Limits
+- Maximum file size: 10MB
+
 ## Testing
 
 ```bash
@@ -129,6 +161,19 @@ $ npm run test:e2e
 # test coverage
 $ npm run test:cov
 ```
+
+### Test Coverage
+- **Unit tests** cover controller methods, service interactions, and edge cases
+- **E2E tests** cover:
+  - File upload validation (file types, size limits)
+  - CRUD operations for media entities
+  - Error handling scenarios
+
+### Recent Updates (May 2025)
+- Added comprehensive file validation to prevent security vulnerabilities
+- Implemented extensive CRUD test coverage for media operations
+- Fixed path alias resolution issues in Jest configuration for both unit and E2E tests
+- Added E2E tests for file validation ensuring proper rejection of executable files
 
 ## License
 
