@@ -160,8 +160,11 @@ $ npm run test
 # e2e tests
 $ npm run test:e2e
 
-# stress tests for concurrent uploads
+# stress tests for concurrent uploads (default settings)
 $ npm run test:e2e -- media.stress-spec.ts
+
+# stress tests with custom concurrency parameters using command-line arguments
+$ npm run test:e2e -- media.stress-spec.ts --concurrency=20 --concurrencyHigh=100 --concurrencyPerSize=5
 
 # test coverage
 $ npm run test:cov
