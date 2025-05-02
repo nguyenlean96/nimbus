@@ -8,33 +8,73 @@ import {
   Delete,
   UseInterceptors,
   UploadedFile,
+  NotFoundException,
 } from '@nestjs/common';
 import { MediaService } from './media.service';
 import { CreateMediaDto } from './dto/create-media.dto';
 import { UpdateMediaDto } from './dto/update-media.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { localStorageConfig } from '../storage/disks/local.storage';
 
 @Controller('media')
 export class MediaController {
   constructor(private readonly mediaService: MediaService) {}
 
   @Post()
-  @UseInterceptors(FileInterceptor('file'))
-  create(
+  @UseInterceptors(FileInterceptor('file', localStorageConfig))
+  async create(
     @Body() createMediaDto: CreateMediaDto,
     @UploadedFile() file: Express.Multer.File,
   ) {
-    return this.mediaService.create(createMediaDto, file);
+    const media = await this.mediaService.create(createMediaDto, file);
+    
+    // Provide URLs for the original and thumbnail versions
+    return {
+      ...media,
+      urls: {
+        original: this.mediaService.getMediaUrl(media),
+        thumb: this.mediaService.getMediaUrl(media, 'thumb'),
+        small: this.mediaService.getMediaUrl(media, 'small'),
+        medium: this.mediaService.getMediaUrl(media, 'medium'),
+        large: this.mediaService.getMediaUrl(media, 'large'),
+      }
+    };
   }
 
   @Get()
-  findAll() {
-    return this.mediaService.findAll();
+  async findAll() {
+    const media = await this.mediaService.findAll();
+    
+    // Add URLs to each media item
+    return media.map(item => ({
+      ...item,
+      urls: {
+        original: this.mediaService.getMediaUrl(item),
+        thumb: this.mediaService.getMediaUrl(item, 'thumb'),
+        small: this.mediaService.getMediaUrl(item, 'small'),
+        medium: this.mediaService.getMediaUrl(item, 'medium'),
+        large: this.mediaService.getMediaUrl(item, 'large'),
+      }
+    }));
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.mediaService.findOne(+id);
+  async findOne(@Param('id') id: string) {
+    const media = await this.mediaService.findOne(+id);
+    if (!media) {
+      throw new NotFoundException(`Media with ID ${id} not found`);
+    }
+    
+    return {
+      ...media,
+      urls: {
+        original: this.mediaService.getMediaUrl(media),
+        thumb: this.mediaService.getMediaUrl(media, 'thumb'),
+        small: this.mediaService.getMediaUrl(media, 'small'),
+        medium: this.mediaService.getMediaUrl(media, 'medium'),
+        large: this.mediaService.getMediaUrl(media, 'large'),
+      }
+    };
   }
 
   @Patch(':id')
