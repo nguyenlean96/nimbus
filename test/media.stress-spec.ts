@@ -6,16 +6,18 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 
-// Default concurrency values
-const DEFAULT_CONCURRENCY = 10;
-const DEFAULT_CONCURRENCY_HIGH = 50;
-const DEFAULT_CONCURRENCY_PER_SIZE = 3;
+// Default concurrency values - increased to stress the server more
+const DEFAULT_CONCURRENCY = 20; // Increased from 10
+const DEFAULT_CONCURRENCY_HIGH = 100; // Increased from 50
+const DEFAULT_CONCURRENCY_PER_SIZE = 5; // Increased from 3
+const DEFAULT_EXTREME_CONCURRENCY = 200; // New extreme value to force errors
 
 // Parse concurrency from command line arguments or environment variables
 console.log('Environment variables:', {
   TEST_CONCURRENCY: process.env.TEST_CONCURRENCY,
   TEST_CONCURRENCY_HIGH: process.env.TEST_CONCURRENCY_HIGH,
   TEST_CONCURRENCY_PER_SIZE: process.env.TEST_CONCURRENCY_PER_SIZE,
+  TEST_EXTREME_CONCURRENCY: process.env.TEST_EXTREME_CONCURRENCY,
 });
 
 // Get all process arguments
@@ -39,7 +41,9 @@ const getArgValue = (name) => {
       ? DEFAULT_CONCURRENCY
       : name === 'concurrencyHigh'
         ? DEFAULT_CONCURRENCY_HIGH
-        : DEFAULT_CONCURRENCY_PER_SIZE,
+        : name === 'extremeConcurrency'
+          ? DEFAULT_EXTREME_CONCURRENCY
+          : DEFAULT_CONCURRENCY_PER_SIZE,
   );
   return null;
 };
@@ -50,12 +54,24 @@ const CONCURRENCY_HIGH =
   getArgValue('concurrencyHigh') || DEFAULT_CONCURRENCY_HIGH;
 const CONCURRENCY_PER_SIZE =
   getArgValue('concurrencyPerSize') || DEFAULT_CONCURRENCY_PER_SIZE;
+const EXTREME_CONCURRENCY = 
+  getArgValue('extremeConcurrency') || DEFAULT_EXTREME_CONCURRENCY;
 
 // Log the actual concurrency values being used
 console.log('⚡ Running stress tests with the following concurrency settings:');
 console.log(`  - Basic concurrency: ${CONCURRENCY}`);
 console.log(`  - High concurrency: ${CONCURRENCY_HIGH}`);
 console.log(`  - Concurrency per file size: ${CONCURRENCY_PER_SIZE}`);
+console.log(`  - Extreme concurrency: ${EXTREME_CONCURRENCY}`);
+
+// Define result type to fix TypeScript errors
+interface UploadResult {
+  success: boolean;
+  timeMs: number;
+  statusCode: number;
+  fileSize?: number;
+  error?: any;
+}
 
 describe('Media Upload Stress Tests', () => {
   let app: INestApplication;
@@ -123,12 +139,8 @@ describe('Media Upload Stress Tests', () => {
     fileIndex: number,
     useSmallJpeg = true,
     fileSize?: number,
-  ): Promise<{
-    success: boolean;
-    timeMs: number;
-    statusCode: number;
-    fileSize?: number;
-  }> => {
+    timeout: number = 10000, // Added timeout parameter with 10s default
+  ): Promise<UploadResult> => {
     // Determine which file creation method to use based on parameters
     let filePath: string;
 
@@ -145,20 +157,25 @@ describe('Media Upload Stress Tests', () => {
     const startTime = Date.now();
     let success = false;
     let statusCode = 0;
+    let error = null;
 
     try {
-      const response = await request(app.getHttpServer())
+      const uploadRequest = request(app.getHttpServer())
         .post('/media')
         .attach('file', filePath)
-        .field('collection', `stress-test-${fileIndex}`);
+        .field('collection', `stress-test-${fileIndex}`)
+        .timeout(timeout); // Added timeout setting
+
+      const response = await uploadRequest;
 
       statusCode = response.statusCode;
       success = response.statusCode === 201;
     } catch (err) {
       console.error(
-        `Upload ${fileIndex} (${fileSize ? `${fileSize}` : 'N/A'} bytes) failed:`,
+        `Upload ${fileIndex} ${fileSize ? `(${fileSize} bytes)` : ''} failed:`,
         err,
       );
+      error = err;
       success = false;
     } finally {
       // Clean up test file
@@ -175,6 +192,7 @@ describe('Media Upload Stress Tests', () => {
       timeMs: endTime - startTime,
       statusCode,
       fileSize,
+      error,
     };
   };
 
@@ -229,12 +247,74 @@ describe('Media Upload Stress Tests', () => {
       console.log(`Min Response Time: ${minTime}ms`);
       console.log(`Max Response Time: ${maxTime}ms`);
 
+      // List any error types found
+      const errorCounts = {};
+      results.forEach(result => {
+        if (!result.success && result.error) {
+          const errorType = result.error.code || 'Unknown';
+          errorCounts[errorType] = (errorCounts[errorType] || 0) + 1;
+        }
+      });
+      
+      console.log('Error breakdown:', errorCounts);
+
       // Success criteria - expect at least 30% success rate for high concurrency
       // NOTE: Server is currently limited in how many concurrent uploads it can handle
       // Future improvements should focus on server-side optimization
       const successRate = successfulUploads / concurrentUploads;
       expect(successRate).toBeGreaterThanOrEqual(0.3);
     }, 60000); // Increase timeout to 60 seconds for this test
+
+    // New extreme concurrency test designed to force ECONNRESET errors
+    it(`should handle ${EXTREME_CONCURRENCY} extreme concurrent uploads with shorter timeouts`, async () => {
+      const concurrentUploads = EXTREME_CONCURRENCY;
+      const results = await Promise.all(
+        Array.from({ length: concurrentUploads }, (_, i) => 
+          // Use shorter timeout to increase likelihood of connection issues
+          runUpload(i + 1000, true, undefined, 5000)
+        ),
+      );
+
+      // Calculate statistics
+      const successfulUploads = results.filter((r) => r.success).length;
+      const averageTime =
+        results.reduce((sum, r) => sum + r.timeMs, 0) / results.length;
+      const maxTime = Math.max(...results.map((r) => r.timeMs));
+      const minTime = Math.min(...results.map((r) => r.timeMs));
+
+      // Count different types of errors
+      const errorCounts = {};
+      results.forEach(result => {
+        if (!result.success && result.error) {
+          const errorType = result.error.code || 'Unknown';
+          errorCounts[errorType] = (errorCounts[errorType] || 0) + 1;
+        }
+      });
+
+      console.log(
+        `\nExtreme Concurrent Upload Test Results (${concurrentUploads} uploads):`,
+      );
+      console.log(
+        `Success Rate: ${(successfulUploads / concurrentUploads) * 100}%`,
+      );
+      console.log(`Average Response Time: ${averageTime.toFixed(2)}ms`);
+      console.log(`Min Response Time: ${minTime}ms`);
+      console.log(`Max Response Time: ${maxTime}ms`);
+      console.log('Error breakdown:', errorCounts);
+
+      // For this test, we specifically expect to see some connection failures
+      const connectionErrors = results.filter(r => 
+        r.error && (r.error.code === 'ECONNRESET' || r.error.code === 'ETIMEDOUT')
+      ).length;
+      
+      console.log(`Connection Reset/Timeout Errors: ${connectionErrors}`);
+
+      // Success criteria - expect some level of success, but we're actually looking for errors here
+      const successRate = successfulUploads / concurrentUploads;
+      expect(successRate).toBeGreaterThanOrEqual(0.1); // At least 10% success
+      // Also expect some connection reset errors
+      expect(connectionErrors).toBeGreaterThan(0);
+    }, 90000); // 90 second timeout for this extreme test
 
     // Test with varying file types instead of corrupted JPEGs with varying sizes
     it(`should handle text files of different sizes with ${CONCURRENCY_PER_SIZE} concurrent uploads per size`, async () => {
@@ -245,18 +325,12 @@ describe('Media Upload Stress Tests', () => {
         500 * 1024, // 500 KB
         1 * 1024 * 1024, // 1 MB
         2 * 1024 * 1024, // 2 MB - reduced from 5MB to avoid timeouts
+        // Adding larger file to stress even more
+        5 * 1024 * 1024, // 5 MB
       ];
 
       const concurrentPerSize = CONCURRENCY_PER_SIZE;
       const totalUploads = fileSizes.length * concurrentPerSize;
-
-      // Create array to store all upload tasks
-      type UploadResult = {
-        success: boolean;
-        timeMs: number;
-        statusCode: number;
-        fileSize?: number;
-      };
 
       const uploadPromises: Promise<UploadResult>[] = [];
 
@@ -265,9 +339,9 @@ describe('Media Upload Stress Tests', () => {
         const size = fileSizes[sizeIndex];
 
         for (let i = 0; i < concurrentPerSize; i++) {
-          const fileIndex = sizeIndex * concurrentPerSize + i + 200; // offset to avoid conflicts
+          const fileIndex = sizeIndex * concurrentPerSize + i + 2000; // offset to avoid conflicts
           // Use text files instead of problematic JPEGs
-          uploadPromises.push(runUpload(fileIndex, false, size));
+          uploadPromises.push(runUpload(fileIndex, false, size, 15000)); // Higher timeout for larger files
         }
       }
 
@@ -287,12 +361,22 @@ describe('Media Upload Stress Tests', () => {
           sizeResults.reduce((sum, r) => sum + r.timeMs, 0) /
           sizeResults.length;
 
+        // Count errors by type for this size
+        const errorsByType = {};
+        sizeResults.forEach(result => {
+          if (!result.success && result.error) {
+            const errorType = result.error.code || 'Unknown';
+            errorsByType[errorType] = (errorsByType[errorType] || 0) + 1;
+          }
+        });
+
         return {
           fileSize: size / 1024, // Convert to KB for display
           totalUploads: sizeResults.length,
           successfulUploads: sizeSuccessful,
           successRate: (sizeSuccessful / sizeResults.length) * 100,
           avgResponseTime: sizeAvgTime,
+          errors: errorsByType
         };
       });
 
@@ -307,12 +391,68 @@ describe('Media Upload Stress Tests', () => {
       console.log('\nResults by File Size:');
       resultsBySize.forEach((r) => {
         console.log(
-          `${r.fileSize} KB: ${r.successRate.toFixed(2)}% success, avg time: ${r.avgResponseTime.toFixed(2)}ms`,
+          `${r.fileSize} KB: ${r.successRate.toFixed(2)}% success, avg time: ${r.avgResponseTime.toFixed(2)}ms, errors: ${JSON.stringify(r.errors)}`,
         );
       });
 
       // Success criteria - expect at least 80% success rate for varied file sizes
       expect(successfulUploads / totalUploads).toBeGreaterThanOrEqual(0.8);
-    }, 120000); // 2-minute timeout for this comprehensive test
+    }, 180000); // 3-minute timeout for this comprehensive test
+  });
+
+  // New test specifically to force ECONNRESET errors by creating bursts of uploads
+  describe('Connection Reset Testing', () => {
+    it('should observe ECONNRESET errors with rapid burst uploads', async () => {
+      const burstSize = 50; // How many files to upload in quick succession
+      const totalBursts = 5; // How many bursts to perform
+      const delayBetweenBursts = 1000; // ms between bursts (1 second)
+      
+      const allResults: UploadResult[] = [];
+
+      for (let burst = 0; burst < totalBursts; burst++) {
+        console.log(`\nStarting upload burst ${burst + 1} of ${totalBursts}`);
+        
+        // Run a burst of uploads with shorter timeouts to provoke connection resets
+        const burstResults = await Promise.all(
+          Array.from({ length: burstSize }, (_, i) => 
+            runUpload(i + 3000 + (burst * burstSize), true, undefined, 3000)
+          )
+        );
+        
+        allResults.push(...burstResults);
+        
+        // Small delay between bursts to let server recover slightly
+        if (burst < totalBursts - 1) {
+          await new Promise(resolve => setTimeout(resolve, delayBetweenBursts));
+        }
+      }
+      
+      // Analyze results
+      const successfulUploads = allResults.filter(r => r.success).length;
+      const successRate = (successfulUploads / allResults.length) * 100;
+      
+      // Count error types
+      const errorCounts = {};
+      allResults.forEach(result => {
+        if (!result.success && result.error) {
+          const errorType = result.error.code || 'Unknown';
+          errorCounts[errorType] = (errorCounts[errorType] || 0) + 1;
+        }
+      });
+      
+      console.log(`\nRapid Burst Upload Results (${allResults.length} total uploads):`);
+      console.log(`Success Rate: ${successRate.toFixed(2)}%`);
+      console.log('Error breakdown:', errorCounts);
+      
+      // We specifically expect some ECONNRESET errors in this test
+      const connectionResetErrors = allResults.filter(
+        r => r.error && r.error.code === 'ECONNRESET'
+      ).length;
+      
+      console.log(`ECONNRESET Errors: ${connectionResetErrors}`);
+      
+      // This test is designed to produce ECONNRESET errors, so we expect some
+      expect(connectionResetErrors).toBeGreaterThan(0);
+    }, 120000); // 2-minute timeout
   });
 });
