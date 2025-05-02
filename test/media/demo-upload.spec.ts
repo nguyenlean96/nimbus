@@ -7,13 +7,13 @@
 
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
-import { AppModule } from '../src/app.module';
+import { AppModule } from '@/app.module';
 import {
   uploadFileWithRetry,
   batchUploadWithRetry,
   createSampleTextFile,
   createMinimalJpegFile
-} from '@test/utils/client/upload-client';
+} from '@test/media/upload-client.util';
 
 describe('Resilient Upload Demonstration', () => {
   let app: INestApplication;
