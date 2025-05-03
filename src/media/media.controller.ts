@@ -16,7 +16,7 @@ import { UpdateMediaDto } from './dto/update-media.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { localStorageConfig } from '../storage/disks/local.storage';
 
-@Controller('media')
+@Controller('api/v1/media')
 export class MediaController {
   constructor(private readonly mediaService: MediaService) {}
 
