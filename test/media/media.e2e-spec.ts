@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import * as request from 'supertest';
-import { AppModule } from '../src/app.module';
+import { AppModule } from '@/app.module';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
@@ -34,20 +34,20 @@ describe('Media Upload E2E Tests', () => {
     return filePath;
   };
 
-  describe('/media (POST) - File Upload Validation', () => {
+  describe('/api/v1/media (POST) - File Upload Validation', () => {
     it('should accept a valid image file', async () => {
       // Create a small JPEG file
       const validImagePath = createTestFile(
         'valid-image.jpg',
         Buffer.from(
-          '/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAIBAQIBAQICAgICAgICAwUDAwMDAwYEBAMFBwYHBwcGBwcICQsJCAgKCAcHCg0KCgsMDAwMBwkODw0MDgsMDAz/2wBDAQICAgMDAwYDAwYMCAcIDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAz/wAARCAABAAEDASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwD9/KKKKAP/2Q==',
+          '/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAIBAQIBAQICAgICAgICAwUDAwMDAwYEBAMFBwYHBwcGBwcICQsJCAgKCAcHCg0KCgsMDAwMBwkODw0MDgsMDAz/2wBDAQICAgMDAwYDAwYMCAcIDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAz/wAARCAABAAEDASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIHMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwD9/KKKKAP/2Q==',
           'base64'
         )
       );
 
       // Make the request
       return request(app.getHttpServer())
-        .post('/media')
+        .post('/api/v1/media')
         .attach('file', validImagePath)
         .field('collection', 'test-images')
         .expect(201)
@@ -68,7 +68,7 @@ describe('Media Upload E2E Tests', () => {
 
       // Make the request
       return request(app.getHttpServer())
-        .post('/media')
+        .post('/api/v1/media')
         .attach('file', validPdfPath)
         .field('collection', 'test-documents')
         .expect(201)
@@ -89,7 +89,7 @@ describe('Media Upload E2E Tests', () => {
 
       // Make the request
       return request(app.getHttpServer())
-        .post('/media')
+        .post('/api/v1/media')
         .attach('file', exePath)
         .field('collection', 'test-documents')
         .expect(400)
@@ -106,7 +106,7 @@ describe('Media Upload E2E Tests', () => {
 
       // Make the request
       return request(app.getHttpServer())
-        .post('/media')
+        .post('/api/v1/media')
         .attach('file', dllPath)
         .field('collection', 'test-documents')
         .expect(400)
@@ -123,7 +123,7 @@ describe('Media Upload E2E Tests', () => {
 
       // Make the request
       return request(app.getHttpServer())
-        .post('/media')
+        .post('/api/v1/media')
         .attach('file', batPath)
         .field('collection', 'test-documents')
         .expect(400)
@@ -140,7 +140,7 @@ describe('Media Upload E2E Tests', () => {
 
       // Make the request
       return request(app.getHttpServer())
-        .post('/media')
+        .post('/api/v1/media')
         .attach('file', shPath)
         .field('collection', 'test-documents')
         .expect(400)
@@ -157,7 +157,7 @@ describe('Media Upload E2E Tests', () => {
 
       // Make the request with a manipulated mime type
       return request(app.getHttpServer())
-        .post('/media')
+        .post('/api/v1/media')
         .attach('file', maliciousPath)
         .set('Content-Type', 'multipart/form-data; boundary=X')
         .field('collection', 'test-documents')
@@ -177,7 +177,7 @@ describe('Media Upload E2E Tests', () => {
 
       // Make the request
       return request(app.getHttpServer())
-        .post('/media')
+        .post('/api/v1/media')
         .attach('file', largeFilePath)
         .field('collection', 'test-documents')
         .expect(413) // Payload Too Large
@@ -188,11 +188,11 @@ describe('Media Upload E2E Tests', () => {
     });
   });
 
-  describe('/media (GET) - Retrieve Media', () => {
+  describe('/api/v1/media (GET) - Retrieve Media', () => {
     // This assumes there's at least one media item in the database
     it('should return a list of media items', () => {
       return request(app.getHttpServer())
-        .get('/media')
+        .get('/api/v1/media')
         .expect(200)
         .then((response) => {
           expect(Array.isArray(response.body)).toBe(true);
@@ -200,7 +200,7 @@ describe('Media Upload E2E Tests', () => {
     });
   });
 
-  describe('/media/:id (GET) - Get Media by ID', () => {
+  describe('/api/v1/media/:id (GET) - Get Media by ID', () => {
     // First create a media item, then retrieve it by ID
     let createdMediaId: number;
 
@@ -216,7 +216,7 @@ describe('Media Upload E2E Tests', () => {
 
       // Upload the image to get an ID
       const response = await request(app.getHttpServer())
-        .post('/media')
+        .post('/api/v1/media')
         .attach('file', imagePath)
         .field('collection', 'test-retrieve')
         .expect(201);
@@ -227,7 +227,7 @@ describe('Media Upload E2E Tests', () => {
 
     it('should retrieve a media item by ID', () => {
       return request(app.getHttpServer())
-        .get(`/media/${createdMediaId}`)
+        .get(`/api/v1/media/${createdMediaId}`)
         .expect(200)
         .then((response) => {
           expect(response.body).toHaveProperty('id', createdMediaId);
@@ -238,12 +238,12 @@ describe('Media Upload E2E Tests', () => {
 
     it('should return 404 for non-existent media ID', () => {
       return request(app.getHttpServer())
-        .get(`/media/99999`)
+        .get(`/api/v1/media/99999`)
         .expect(404);
     });
   });
 
-  describe('/media/:id (PATCH) - Update Media', () => {
+  describe('/api/v1/media/:id (PATCH) - Update Media', () => {
     // First create a media item, then update it
     let createdMediaId: number;
 
@@ -259,7 +259,7 @@ describe('Media Upload E2E Tests', () => {
 
       // Upload the image to get an ID
       const response = await request(app.getHttpServer())
-        .post('/media')
+        .post('/api/v1/media')
         .attach('file', imagePath)
         .field('collection', 'test-update')
         .expect(201);
@@ -270,7 +270,7 @@ describe('Media Upload E2E Tests', () => {
 
     it('should update a media item', () => {
       return request(app.getHttpServer())
-        .patch(`/media/${createdMediaId}`)
+        .patch(`/api/v1/media/${createdMediaId}`)
         .send({ collection: 'updated-collection' })
         .expect(200)
         .then((response) => {
@@ -280,7 +280,7 @@ describe('Media Upload E2E Tests', () => {
     });
   });
 
-  describe('/media/:id (DELETE) - Delete Media', () => {
+  describe('/api/v1/media/:id (DELETE) - Delete Media', () => {
     // First create a media item, then delete it
     let createdMediaId: number;
 
@@ -296,7 +296,7 @@ describe('Media Upload E2E Tests', () => {
 
       // Upload the image to get an ID
       const response = await request(app.getHttpServer())
-        .post('/media')
+        .post('/api/v1/media')
         .attach('file', imagePath)
         .field('collection', 'test-delete')
         .expect(201);
@@ -307,7 +307,7 @@ describe('Media Upload E2E Tests', () => {
 
     it('should delete a media item', () => {
       return request(app.getHttpServer())
-        .delete(`/media/${createdMediaId}`)
+        .delete(`/api/v1/media/${createdMediaId}`)
         .expect(200)
         .then((response) => {
           expect(response.body).toHaveProperty('success', true);
@@ -315,7 +315,7 @@ describe('Media Upload E2E Tests', () => {
           
           // Verify it's actually gone
           return request(app.getHttpServer())
-            .get(`/media/${createdMediaId}`)
+            .get(`/api/v1/media/${createdMediaId}`)
             .expect(404);
         });
     });
