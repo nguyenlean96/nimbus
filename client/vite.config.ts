@@ -1,8 +1,13 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react';
-import tailwindcss from '@tailwindcss/vite';
+import tailwindPlugin from '@tailwindcss/vite';
+import { resolve } from 'path';
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(), tailwindcss(),],
+  plugins: [react(), tailwindPlugin()],
+  build: {
+    outDir: resolve(__dirname, '../dist/client'),
+    emptyOutDir: true,
+  },
 })
