@@ -43,8 +43,30 @@ export class MediaService {
     return savedMedia;
   }
 
-  findAll() {
-    return this.mediaRepo.find();
+  async findAll(page: number = 1, limit: number = 10) {
+    const skip = (page - 1) * limit;
+    
+    const [items, total] = await this.mediaRepo.findAndCount({
+      skip,
+      take: limit,
+      order: {
+        id: 'DESC' // Most recent first
+      }
+    });
+
+    const lastPage = Math.ceil(total / limit);
+    
+    return {
+      data: items,
+      meta: {
+        total,
+        page,
+        limit,
+        lastPage,
+        hasNextPage: page < lastPage,
+        hasPreviousPage: page > 1
+      }
+    };
   }
 
   async findOne(id: number) {
