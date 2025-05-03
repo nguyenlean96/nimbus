@@ -9,12 +9,14 @@ import {
   UseInterceptors,
   UploadedFile,
   NotFoundException,
+  Query,
 } from '@nestjs/common';
 import { MediaService } from './media.service';
 import { CreateMediaDto } from './dto/create-media.dto';
 import { UpdateMediaDto } from './dto/update-media.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { localStorageConfig } from '../storage/disks/local.storage';
+import { PaginationDto } from './dto/pagination.dto';
 
 @Controller('api/v1/media')
 export class MediaController {
@@ -42,11 +44,14 @@ export class MediaController {
   }
 
   @Get()
-  async findAll() {
-    const media = await this.mediaService.findAll();
+  async findAll(@Query() paginationDto: PaginationDto) {
+    // Use default values if not provided
+    const page = paginationDto.page || 1;
+    const limit = paginationDto.limit || 10;
+    const result = await this.mediaService.findAll(page, limit);
     
     // Add URLs to each media item
-    return media.map(item => ({
+    const mediaWithUrls = result.data.map(item => ({
       ...item,
       urls: {
         original: this.mediaService.getMediaUrl(item),
@@ -56,6 +61,17 @@ export class MediaController {
         large: this.mediaService.getMediaUrl(item, 'large'),
       }
     }));
+    
+    return {
+      data: mediaWithUrls,
+      meta: result.meta,
+      links: {
+        first: `api/v1/media?page=1&limit=${limit}`,
+        previous: result.meta.hasPreviousPage ? `api/v1/media?page=${page - 1}&limit=${limit}` : null,
+        next: result.meta.hasNextPage ? `api/v1/media?page=${page + 1}&limit=${limit}` : null,
+        last: `api/v1/media?page=${result.meta.lastPage}&limit=${limit}`
+      }
+    };
   }
 
   @Get(':id')
