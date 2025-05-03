@@ -161,7 +161,7 @@ describe('Media Upload Stress Tests', () => {
 
     try {
       const uploadRequest = request(app.getHttpServer())
-        .post('/media')
+        .post('/api/v1/media')
         .attach('file', filePath)
         .field('collection', `stress-test-${fileIndex}`)
         .timeout(timeout); // Added timeout setting
