@@ -15,7 +15,7 @@ import { join } from 'path';
       rootPath: join(__dirname, '..', 'storage', 'public'),
       serveRoot: '/storage',
     }, {
-      rootPath: join(__dirname, '..', 'client', 'dist'),
+      rootPath: join(__dirname, '..', 'dist', 'client'),
       exclude: ['/api*', '/storage*'],
     }),
   ],
