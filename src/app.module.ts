@@ -14,6 +14,9 @@ import { join } from 'path';
     ServeStaticModule.forRoot({
       rootPath: join(__dirname, '..', 'storage', 'public'),
       serveRoot: '/storage',
+    }, {
+      rootPath: join(__dirname, '..', 'client', 'dist'),
+      exclude: ['/api*', '/storage*'],
     }),
   ],
   controllers: [AppController],
